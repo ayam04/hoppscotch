@@ -7,6 +7,7 @@ import { tupleToRecord } from "~/helpers/functional/record"
 import { safeParseJSON } from "~/helpers/functional/json"
 import { optionChoose } from "~/helpers/functional/option"
 import xmlFormat from "xml-formatter"
+import * as LJSON from "lossless-json"
 
 const isJSON = flow(safeParseJSON, O.isSome)
 
@@ -160,8 +161,11 @@ const getXMLBody = (rawData: string) =>
   )
 
 const getFormattedJSON = flow(
-  safeParseJSON,
-  O.map((parsedJSON) => JSON.stringify(parsedJSON, null, 2)),
+  O.tryCatchK(LJSON.parse),
+  // JSON.parse would coerce integers beyond Number.MAX_SAFE_INTEGER
+  // (Snowflake/Java Long ids) into rounded doubles; lossless-json keeps
+  // the digits exact through the pretty-print round-trip.
+  O.map((val) => LJSON.stringify(val, undefined, 2)),
   O.getOrElse(() => "{ }")
 )
 

@@ -1185,3 +1185,23 @@ describe("Parse curl command to Hopp REST Request", () => {
     })
   }
 })
+
+describe("Parse curl with JSON body containing large integers", () => {
+  test("preserves integers beyond Number.MAX_SAFE_INTEGER byte-for-byte", () => {
+    const snowflakeId = "7383838380294098442"
+    const command = `curl --request POST       --url https://echo.hoppscotch.io/       --header 'content-type: application/json'       --data '{"id":${snowflakeId},"name":"test"}'`
+    const actual = parseCurlToHoppRESTReq(command)
+    expect(actual.body.body).toContain(snowflakeId)
+    expect(actual.body.body).not.toContain("7383838380294098000")
+    // still valid JSON after import
+    expect(() => JSON.parse(actual.body.body)).not.toThrow()
+  })
+
+  test("preserves nested large integers in arrays", () => {
+    const command = `curl --request POST       --url https://echo.hoppscotch.io/       --header 'content-type: application/json'       --data '{"ids":[9007199254740993,9223372036854775807],"ok":true}'`
+    const actual = parseCurlToHoppRESTReq(command)
+    expect(actual.body.body).toContain("9007199254740993")
+    expect(actual.body.body).toContain("9223372036854775807")
+  })
+})
+
